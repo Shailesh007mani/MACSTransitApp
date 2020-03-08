@@ -11,24 +11,28 @@ import fnsb.macstransit.R;
 import fnsb.macstransit.RouteMatch.Route;
 import fnsb.macstransit.RouteMatch.SharedStop;
 import fnsb.macstransit.RouteMatch.Stop;
-import fnsb.macstransit.Threads.UpdateThread;
 
 public class MapsActivity extends androidx.fragment.app.FragmentActivity implements
 		com.google.android.gms.maps.OnMapReadyCallback {
 
 	/**
-	 * Create an array of all the routes that are used by the transit system. For now leave it uninitialized,
-	 * as it will be dynamically generated in the onCreate method.
+	 * Create an array of all the childRoutes that are used by the transit system.
+	 * For now leave it uninitialized, as it will be dynamically generated in the onCreate method.
 	 */
-	public static Route[] allRoutes;
+	public static Route[] allRoutes = new Route[0];
 
 	/**
-	 * Create an instance of the route match object that will be used for this app.
+	 * Create an instance of the parentRoute match object that will be used for this app.
 	 */
 	public static fnsb.macstransit.RouteMatch.RouteMatch routeMatch;
 
 	/**
-	 * Create an array list to determine which routes have been selected from the menu to track.
+	 * Create the map object.
+	 */
+	public static GoogleMap map;
+
+	/**
+	 * Create an array list to determine which childRoutes have been selected from the menu to track.
 	 */
 	public Route[] selectedRoutes = new Route[0];
 
@@ -38,30 +42,20 @@ public class MapsActivity extends androidx.fragment.app.FragmentActivity impleme
 	public SharedStop[] sharedStops = new SharedStop[0];
 
 	/**
-	 * Create the map object.
-	 */
-	public GoogleMap map;
-
-	/**
-	 * Create an instance of the thread object that will be used to pull data from the routematch server.
-	 */
-	private UpdateThread thread = new UpdateThread(this, 3000);
-
-	/**
-	 * Boolean to check whether or not the menu items for the routes have been (dynamically) created.
+	 * Boolean to check whether or not the menu items for the childRoutes have been (dynamically) created.
 	 * This is used to prevent making multiple duplicate menu items in {@code onPrepareOptionsMenu(Menu menu)}.
 	 */
 	private boolean menuCreated;
 
 	/**
-	 * Prepare the Screen's standard options menu to be displayed.
+	 * Prepare the Screen's standard parentCircleOptions menu to be displayed.
 	 * This is called right before the menu is shown, every time it is shown.
 	 * You can use this method to efficiently enable/disable items or otherwise dynamically modify the contents.
 	 * <p>
 	 * The default implementation updates the system menu items based on the activity's state.
 	 * Deriving classes should always call through to the base class implementation.
 	 *
-	 * @param menu The options menu as last shown or first initialized by onCreateOptionsMenu().
+	 * @param menu The parentCircleOptions menu as last shown or first initialized by onCreateOptionsMenu().
 	 * @return You must return true for the menu to be displayed; if you return false it will not be shown.
 	 */
 	@Override
@@ -69,11 +63,13 @@ public class MapsActivity extends androidx.fragment.app.FragmentActivity impleme
 		// Check if the menu has not yet been created.
 		if (!menuCreated) {
 
-			// Iterate through all the routes that can be tracked.
-			for (Route route : MapsActivity.allRoutes) {
-
-				// Add the route to the routes menu group, and make sure its checkable.
-				menu.add(R.id.routes, Menu.NONE, Menu.NONE, route.routeName).setCheckable(true);
+			// Iterate through all the childRoutes that can be tracked.
+			try {
+				for (Route route : MapsActivity.allRoutes) {
+					// Add the parentRoute to the childRoutes menu group, and make sure its checkable.
+					menu.add(R.id.routes, Menu.NONE, Menu.NONE, route.routeName).setCheckable(true);
+				}
+			} catch (NullPointerException ignore) {
 			}
 
 			// Once finished, set the menuCreated variable to true so that this will not be run again.
@@ -84,21 +80,24 @@ public class MapsActivity extends androidx.fragment.app.FragmentActivity impleme
 	}
 
 	/**
-	 * Initialize the contents of the Activity's standard options menu. You should place your menu items in to menu.
+	 * Initialize the contents of the Activity's standard parentCircleOptions menu.
+	 * You should place your menu items in to menu.
 	 * <p>
-	 * This is only called once, the first time the options menu is displayed. To update the menu every time it is displayed,
-	 * see {@code onPrepareOptionsMenu(Menu)}.
+	 * This is only called once, the first time the parentCircleOptions menu is displayed.
+	 * To update the menu every time it is displayed, see {@code onPrepareOptionsMenu(Menu)}.
 	 * <p>
 	 * The default implementation populates the menu with standard system menu items.
-	 * These are placed in the {@code Menu.CATEGORY_SYSTEM} group so that they will be correctly ordered with application-defined menu items.
+	 * These are placed in the {@code Menu.CATEGORY_SYSTEM}
+	 * group so that they will be correctly ordered with application-defined menu items.
 	 * Deriving classes should always call through to the base implementation.
 	 * <p>
 	 * You can safely hold on to menu (and any items created from it),
 	 * making modifications to it as desired, until the next time {@code onCreateOptionsMenu()} is called.
 	 * <p>
-	 * When you add items to the menu, you can implement the Activity's {@code onOptionsItemSelected(MenuItem)} method to handle them there.
+	 * When you add items to the menu, you can implement the Activity's
+	 * {@code onOptionsItemSelected(MenuItem)} method to handle them there.
 	 *
-	 * @param menu The options menu in which you place your items.
+	 * @param menu The parentCircleOptions menu in which you place your items.
 	 * @return You must return true for the menu to be displayed; if you return false it will not be shown.
 	 */
 	@Override
@@ -117,8 +116,9 @@ public class MapsActivity extends androidx.fragment.app.FragmentActivity impleme
 	}
 
 	/**
-	 * This hook is called whenever an item in your options menu is selected.
-	 * The default implementation simply returns false to have the normal processing happen (calling the item's Runnable or sending a message to its Handler as appropriate).
+	 * This hook is called whenever an item in your parentCircleOptions menu is selected.
+	 * The default implementation simply returns false to have the normal processing happen
+	 * (calling the item's Runnable or sending a message to its Handler as appropriate).
 	 * You can use this method for any items for which you would like to do processing without those other facilities.
 	 * <p>
 	 * Derived classes should call through to the base class for it to perform the default menu handling.
@@ -147,9 +147,11 @@ public class MapsActivity extends androidx.fragment.app.FragmentActivity impleme
 						break;
 					// Check if the item that was selected was the settings button.
 					case R.id.settings:
-						Log.d("onOptionsItemSelected", "Showing settings dialog...");
-						SettingsPopupWindow settingsPopupWindow = new SettingsPopupWindow(this);
-						settingsPopupWindow.showSettingsPopup();
+						new SettingsPopupWindow(this).showSettingsPopup();
+						break;
+					// Check if the item that was selected was the fares button.
+					case R.id.fares:
+						new FarePopupWindow(this).showFarePopupWindow();
 						break;
 
 					default:
@@ -158,31 +160,34 @@ public class MapsActivity extends androidx.fragment.app.FragmentActivity impleme
 						break;
 				}
 				break;
-			// Check if the item that was selected belongs to the routes group.
+			// Check if the item that was selected belongs to the childRoutes group.
 			case R.id.routes:
-				// Create a boolean to store the resulting value of the menu item
+				// Create a boolean to store the resulting value of the menu item.
 				boolean enabled = !item.isChecked();
 
-				// Then clear the shared stops since they will be recreated
+				// Then clear the shared stops since they will be recreated.
 				this.sharedStops = SharedStop.clearSharedStops(this.sharedStops);
 
-				// Then clear the regular stops from the map (as the stops to be displayed will be re-evaluated)
+				// Then clear the regular stops from the map (as the stops to be displayed will be re-evaluated).
 				Stop.removeStops(this.selectedRoutes);
 
-				// Toggle the route based on the menu item's title, and its enabled value
-				this.selectedRoutes = enabled ?
-						Route.enableRoutes(item.getTitle().toString(), this.selectedRoutes) :
-						Route.disableRoute(item.getTitle().toString(), this.selectedRoutes);
+				// Toggle the routes based on the menu item's title, and its enabled value.
+				if (enabled) {
+					this.selectedRoutes = Route.enableRoutes(item.getTitle().toString(), this.selectedRoutes);
 
-
-				// Draw the buses.
-				fnsb.macstransit.RouteMatch.Bus.drawBuses(this.selectedRoutes, this.map);
+					// Display a warning if the number of selected routes gets to 3.
+					if (this.selectedRoutes.length == 3) {
+						new WarningPopup(this).showWarningPopup();
+					}
+				} else {
+					this.selectedRoutes = Route.disableRoute(item.getTitle().toString(), this.selectedRoutes);
+				}
 
 				// If enabled, draw polylines
 				if (SettingsPopupWindow.SHOW_POLYLINES) {
 					for (Route route : this.selectedRoutes) {
 						if (route.getPolyline() == null) {
-							route.createPolyline(this.map);
+							route.createPolyline(MapsActivity.map);
 						}
 					}
 				}
@@ -218,9 +223,9 @@ public class MapsActivity extends androidx.fragment.app.FragmentActivity impleme
 		this.setContentView(R.layout.activity_maps);
 
 		// Obtain the SupportMapFragment and get notified when the map is ready to be used.
-		((com.google.android.gms.maps.SupportMapFragment) java.util.Objects.requireNonNull(this.getSupportFragmentManager()
-				.findFragmentById(R.id.map))).getMapAsync(this);
-
+		((com.google.android.gms.maps.SupportMapFragment) java.util.Objects
+				.requireNonNull(this.getSupportFragmentManager().findFragmentById(R.id.map)))
+				.getMapAsync(this);
 	}
 
 	/**
@@ -233,8 +238,10 @@ public class MapsActivity extends androidx.fragment.app.FragmentActivity impleme
 	@Override
 	protected void onResume() {
 		super.onResume();
-		this.thread.run = true;
-		this.thread.thread().start();
+		for (Route route : this.selectedRoutes) {
+			route.updateThread.run = true;
+			route.updateThread.thread().start();
+		}
 	}
 
 	/**
@@ -249,7 +256,7 @@ public class MapsActivity extends androidx.fragment.app.FragmentActivity impleme
 	@Override
 	protected void onPause() {
 		super.onPause();
-		this.thread.run = false;
+		this.stopUpdateThreads();
 	}
 
 	/**
@@ -271,7 +278,7 @@ public class MapsActivity extends androidx.fragment.app.FragmentActivity impleme
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
-		this.thread.run = false;
+		this.stopUpdateThreads();
 	}
 
 	/**
@@ -284,30 +291,38 @@ public class MapsActivity extends androidx.fragment.app.FragmentActivity impleme
 	@Override
 	public void onMapReady(GoogleMap googleMap) {
 		// Setup the map object at this point as it is finally initialized and ready.
-		this.map = googleMap;
+		MapsActivity.map = googleMap;
 
 		// Move the camera to the 'home' position
-		this.map.moveCamera(com.google.android.gms.maps.CameraUpdateFactory
+		MapsActivity.map.moveCamera(com.google.android.gms.maps.CameraUpdateFactory
 				.newLatLngZoom(new com.google.android.gms.maps.model
 						.LatLng(64.8391975, -147.7684709), 11.0f));
 
 		// Add a listener for when the camera has become idle (ie was moving isn't anymore).
-		this.map.setOnCameraIdleListener(new AdjustZoom(this));
+		MapsActivity.map.setOnCameraIdleListener(new AdjustZoom(this));
 
 		// Add a listener for when a stop icon (circle) is clicked.
-		this.map.setOnCircleClickListener(new fnsb.macstransit.Activities.ActivityListeners.StopClicked(this));
+		MapsActivity.map.setOnCircleClickListener(new fnsb.macstransit.Activities.ActivityListeners.StopClicked(this));
 
 		// Add a custom info window adapter, to add support for multiline snippets.
-		this.map.setInfoWindowAdapter(new InfoWindowAdapter(this));
+		MapsActivity.map.setInfoWindowAdapter(new InfoWindowAdapter(this));
 
 		// Set it so that if the info window was closed for a Stop marker, make that marker invisible, so its just the dot.
-		this.map.setOnInfoWindowCloseListener(new fnsb.macstransit.Activities.ActivityListeners.StopDeselected());
+		MapsActivity.map.setOnInfoWindowCloseListener(new fnsb.macstransit.Activities.ActivityListeners.StopDeselected());
 
 		// Set it so that when an info window is clicked on, it launches a popup window
-		this.map.setOnInfoWindowClickListener(new PopupWindow(this));
+		MapsActivity.map.setOnInfoWindowClickListener(new PopupWindow(this));
 
 		// Enable traffic overlay based on settings.
-		this.map.setTrafficEnabled(SettingsPopupWindow.ENABLE_TRAFFIC_VIEW);
+		MapsActivity.map.setTrafficEnabled(SettingsPopupWindow.ENABLE_TRAFFIC_VIEW);
+
+		// Enable street-view options based on settings.
+		/* - DEPRECATED -
+		if (SettingsPopupWindow.ENABLE_VR_OPTIONS) {
+			StreetViewListener streetViewListener = new StreetViewListener(this);
+			MapsActivity.map.setOnInfoWindowLongClickListener(streetViewListener);
+		}
+		 */
 
 		// Toggle night mode at this time if enabled.
 		this.toggleNightMode(SettingsPopupWindow.DEFAULT_NIGHT_MODE);
@@ -320,16 +335,29 @@ public class MapsActivity extends androidx.fragment.app.FragmentActivity impleme
 		// Check and load all the shared stops.
 		this.sharedStops = SharedStop.findSharedStops(this.selectedRoutes, this.sharedStops);
 
-		// Create and show the shared stops on the map if there are any (this.sharedStops will have a size greater than 0)
+		// Create and show the shared stops on the map if there are any (this.sharedStops will have a size greater than 0).
 		if (this.sharedStops.length > 0) {
-			SharedStop.addSharedStop(this.map, this.sharedStops);
+			SharedStop.addSharedStop(MapsActivity.map, this.sharedStops);
 		}
 
 		// Create and show the regular stops.
-		Stop.addStop(this.map, this.selectedRoutes, this.sharedStops);
+		Stop.addStop(MapsActivity.map, this.selectedRoutes, this.sharedStops);
 
 		// Adjust the circle sizes of the stops on the map given the current zoom.
-		AdjustZoom.adjustCircleSize(this.map.getCameraPosition().zoom, this.sharedStops);
+		AdjustZoom.adjustCircleSize(MapsActivity.map.getCameraPosition().zoom, this.sharedStops);
+	}
+
+	/**
+	 * Iterates through each update thread in the selected routes, and cancels them.
+	 * This is meant to save on data when the app is not running.
+	 */
+	public void stopUpdateThreads() {
+		Log.w("stopUpdateThreads", "Suspending update threads");
+		for (Route route : this.selectedRoutes) {
+			route.updateThread.run = false;
+			route.asyncBusUpdater.cancel(true);
+			route.updateThread.thread().interrupt();
+		}
 	}
 
 	/**
@@ -338,7 +366,7 @@ public class MapsActivity extends androidx.fragment.app.FragmentActivity impleme
 	 * @param enabled Whether to toggle the maps night mode
 	 */
 	public void toggleNightMode(boolean enabled) {
-		this.map.setMapStyle(enabled ?
+		MapsActivity.map.setMapStyle(enabled ?
 				MapStyleOptions.loadRawResourceStyle(this, R.raw.nightmode) :
 				MapStyleOptions.loadRawResourceStyle(this, R.raw.standard));
 	}
